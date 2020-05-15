@@ -1,0 +1,53 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+import (
+	"go.etcd.io/etcd/clientv3"
+)
+
+func main() {
+
+	var (
+		config  clientv3.Config
+		client  *clientv3.Client
+		err     error
+		kv      clientv3.KV
+		putResp *clientv3.PutResponse
+	)
+
+	config = clientv3.Config{
+		Endpoints:   []string{"127.0.0.1:2379"},
+		DialTimeout: 1 * time.Second,
+	}
+
+	if client, err = clientv3.New(config); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//用于读写etcd中的kv对
+	kv = clientv3.NewKV(client)
+
+	//put
+	if putResp, err = kv.Put(context.TODO(), "/cron/jobs/job1", "helloOld"); err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("revision ", putResp.Header.Revision)
+	}
+
+	//put and get perv
+	if putResp, err = kv.Put(context.TODO(), "/cron/jobs/job2", "hello", clientv3.WithPrevKV()); err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("revision ", putResp.Header.Revision)
+		if putResp.PrevKv != nil {
+			fmt.Printf("prevValue : k = %s, v = %s ", string(putResp.PrevKv.Key), string(putResp.PrevKv.Value))
+		}
+	}
+
+}
